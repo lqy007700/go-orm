@@ -2,6 +2,7 @@ package go_orm
 
 import (
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -47,9 +48,13 @@ func Test_parseModel(t *testing.T) {
 			wantErr: nil,
 		},
 	}
+
+	r := &registry{
+		models: map[reflect.Type]*model{},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m, err := parseModel(tt.input)
+			m, err := r.parseModel(tt.input)
 			assert.Equal(t, err, tt.wantErr)
 			if err != nil {
 				return

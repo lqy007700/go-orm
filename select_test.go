@@ -14,6 +14,9 @@ type TestModel struct {
 }
 
 func TestSelector_Build(t *testing.T) {
+
+	db, _ := NewDB()
+
 	tests := []struct {
 		name    string
 		s       QueryBuilder
@@ -22,7 +25,7 @@ func TestSelector_Build(t *testing.T) {
 	}{
 		{
 			name: "from",
-			s:    NewSelector[TestModel]().From("test_model_tab"),
+			s:    NewSelector[TestModel](db).From("test_model_tab"),
 			want: &Query{
 				SQL: "SELECT * FROM `test_model_tab`;",
 			},
@@ -30,15 +33,15 @@ func TestSelector_Build(t *testing.T) {
 		},
 		{
 			name: "not from",
-			s:    NewSelector[TestModel](),
+			s:    NewSelector[TestModel](db),
 			want: &Query{
-				SQL: "SELECT * FROM `TestModel`;",
+				SQL: "SELECT * FROM `test_model`;",
 			},
 			wantErr: nil,
 		},
 		{
 			name: "with db",
-			s:    NewSelector[TestModel]().From("test_db.test_model"),
+			s:    NewSelector[TestModel](db).From("test_db.test_model"),
 			want: &Query{
 				SQL: "SELECT * FROM `test_db`.`test_model`;",
 			},
@@ -46,34 +49,34 @@ func TestSelector_Build(t *testing.T) {
 		},
 		{
 			name: "where",
-			s:    NewSelector[TestModel]().Where(C("id").EQ(12)),
+			s:    NewSelector[TestModel](db).Where(C("Id").EQ(12)),
 			want: &Query{
-				SQL:  "SELECT * FROM `TestModel` WHERE `id`=?;",
+				SQL:  "SELECT * FROM `test_model` WHERE `id` = ?;",
 				args: []any{12},
 			},
 			wantErr: nil,
 		},
 		{
 			name: "where all",
-			s:    NewSelector[TestModel]().Where(C("age").GT(18), C("age").LT(35)),
+			s:    NewSelector[TestModel](db).Where(C("Age").GT(18), C("Age").LT(35)),
 			want: &Query{
-				SQL:  "SELECT * FROM `TestModel` WHERE (`age` > ?) AND (`age` < ?);",
+				SQL:  "SELECT * FROM `test_model` WHERE (`age` > ?) AND (`age` < ?);",
 				args: []any{18, 35},
 			},
 			wantErr: nil,
 		},
 		{
 			name: "not",
-			s:    NewSelector[TestModel]().Where(Not(C("age").GT(18))),
+			s:    NewSelector[TestModel](db).Where(Not(C("Age").GT(18))),
 			want: &Query{
-				SQL:  "SELECT * FROM `TestModel` WHERE NOT (`age` > ?);",
+				SQL:  "SELECT * FROM `test_model` WHERE NOT (`age` > ?);",
 				args: []any{18},
 			},
 			wantErr: nil,
 		},
 		{
 			name: "and",
-			s:    NewSelector[TestModel]().Where(C("Age").EQ(12), C("FirstName").EQ("liu")),
+			s:    NewSelector[TestModel](db).Where(C("Age").EQ(12), C("FirstName").EQ("liu")),
 			want: &Query{
 				SQL:  "SELECT * FROM `test_model` WHERE (`age` = ?) AND (`first_name` = ?);",
 				args: []any{12, "liu"},
