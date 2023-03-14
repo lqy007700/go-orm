@@ -35,6 +35,7 @@ type Value struct {
 
 func (v Value) expr() {}
 
+// C field
 func C(name string) Column {
 	return Column{name: name}
 }

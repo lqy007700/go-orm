@@ -29,10 +29,6 @@ func (s *Selector[T]) Where(ps ...Predicate) *Selector[T] {
 	return s
 }
 
-//func (s *Selector[T]) Where(where string, args ...any) *Selector[T] {
-//	return s
-//}
-
 func (s *Selector[T]) Build() (*Query, error) {
 	s.sb.WriteString("SELECT * FROM ")
 	s.sb.WriteByte('`')
@@ -89,6 +85,8 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 
 func (s *Selector[T]) buildExpression(expression Expression) error {
 	switch expr := expression.(type) {
+	case nil:
+		return nil
 	case Column:
 		s.sb.WriteByte('`')
 		s.sb.WriteString(expr.name)
@@ -111,7 +109,10 @@ func (s *Selector[T]) buildExpression(expression Expression) error {
 		if ok {
 			s.sb.WriteByte(')')
 		}
-		s.sb.WriteByte(' ')
+		if expr.op.String() != "NOT" {
+			s.sb.WriteByte(' ')
+		}
+
 		s.sb.WriteString(expr.op.String())
 		s.sb.WriteByte(' ')
 

@@ -62,6 +62,24 @@ func TestSelector_Build(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "not",
+			s:    NewSelector[TestModel]().Where(Not(C("age").GT(18))),
+			want: &Query{
+				SQL:  "SELECT * FROM `TestModel` WHERE NOT (`age` > ?);",
+				args: []any{18},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "and",
+			s:    NewSelector[TestModel]().Where(C("age").EQ(12), C("name").EQ("liu")),
+			want: &Query{
+				SQL:  "SELECT * FROM `TestModel` WHERE (`age` = ?) AND (`name` = ?);",
+				args: []any{12, "liu"},
+			},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
