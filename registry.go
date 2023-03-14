@@ -2,6 +2,7 @@ package go_orm
 
 import (
 	"reflect"
+	"strings"
 	"sync"
 	"unicode"
 )
@@ -51,15 +52,59 @@ func (r *registry) parseModel(val any) (*model, error) {
 	fieldMap := make(map[string]*field)
 	for i := 0; i < fieldCnt; i++ {
 		fd := of.Field(i)
+
+		var colName string
+		var ok bool
+		if fd.Tag == "" {
+			colName = underscoreName(fd.Name)
+		} else {
+			tags, err := parseTag(fd.Tag)
+			if err != nil {
+				return nil, err
+			}
+			colName, ok = tags["column"]
+			if !ok || colName == "" {
+				colName = underscoreName(fd.Name)
+			}
+		}
+
 		fieldMap[fd.Name] = &field{
-			colName: underscoreName(fd.Name),
+			colName: colName,
 		}
 	}
 
+	var tableName string
+	if tn, ok := val.(TableName); ok {
+		tableName = tn.TableName()
+	}
+
+	if tableName == "" {
+		tableName = underscoreName(of.Name())
+	}
+
 	return &model{
-		tableName: underscoreName(of.Name()),
+		tableName: tableName,
 		fieldMap:  fieldMap,
 	}, nil
+}
+
+func parseTag(tag reflect.StructTag) (map[string]string, error) {
+	tagv := tag.Get("orm")
+
+	kvs := strings.Split(tagv, ",")
+
+	res := make(map[string]string, 1)
+	for _, kv := range kvs {
+		n := strings.Split(kv, "=")
+
+		k := n[0]
+		var v string
+		if len(n) > 1 {
+			v = n[1]
+		}
+		res[k] = v
+	}
+	return res, nil
 }
 
 // underscoreName 驼峰转字符串命名

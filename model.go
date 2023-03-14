@@ -8,3 +8,7 @@ type model struct {
 type field struct {
 	colName string
 }
+
+type TableName interface {
+	TableName() string
+}

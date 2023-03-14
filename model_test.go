@@ -47,6 +47,23 @@ func Test_parseModel(t *testing.T) {
 			want:    nil,
 			wantErr: nil,
 		},
+		{
+			name: "column tag",
+			input: func() any {
+				type ColumnTag struct {
+					ID uint64 `orm:"column=ids"`
+				}
+				return &ColumnTag{}
+			}(),
+			want: &model{
+				tableName: "column_tag",
+				fieldMap: map[string]*field{
+					"ID": {
+						colName: "ids",
+					},
+				},
+			},
+		},
 	}
 
 	r := &registry{
