@@ -3,16 +3,15 @@ package go_orm
 import (
 	"context"
 	"errors"
-	"reflect"
 	"strings"
 )
 
 type Selector[T any] struct {
 	sb    strings.Builder
+	args  []any
 	table string
 	where []Predicate
-
-	args []any
+	model *model
 }
 
 func NewSelector[T any]() *Selector[T] {
@@ -30,15 +29,20 @@ func (s *Selector[T]) Where(ps ...Predicate) *Selector[T] {
 }
 
 func (s *Selector[T]) Build() (*Query, error) {
+	var (
+		t   = new(T)
+		err error
+	)
+	s.model, err = parseModel(t)
+	if err != nil {
+		return nil, err
+	}
+
 	s.sb.WriteString("SELECT * FROM ")
 	s.sb.WriteByte('`')
 
 	if s.table == "" {
-		var t T
-		// 使用结构体名做为表名
-		of := reflect.TypeOf(t)
-		name := of.Name()
-		s.sb.WriteString(name)
+		s.sb.WriteString(s.model.tableName)
 	} else {
 		// 处理 db.table_name 的情况
 		segs := strings.SplitN(s.table, ".", 2)
@@ -89,7 +93,11 @@ func (s *Selector[T]) buildExpression(expression Expression) error {
 		return nil
 	case Column:
 		s.sb.WriteByte('`')
-		s.sb.WriteString(expr.name)
+		f, ok := s.model.fieldMap[expr.name]
+		if !ok {
+			return errors.New("字段不存在")
+		}
+		s.sb.WriteString(f.colName)
 		s.sb.WriteByte('`')
 	case Value:
 		s.sb.WriteByte('?')

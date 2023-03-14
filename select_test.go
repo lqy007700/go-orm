@@ -73,9 +73,9 @@ func TestSelector_Build(t *testing.T) {
 		},
 		{
 			name: "and",
-			s:    NewSelector[TestModel]().Where(C("age").EQ(12), C("name").EQ("liu")),
+			s:    NewSelector[TestModel]().Where(C("Age").EQ(12), C("FirstName").EQ("liu")),
 			want: &Query{
-				SQL:  "SELECT * FROM `TestModel` WHERE (`age` = ?) AND (`name` = ?);",
+				SQL:  "SELECT * FROM `test_model` WHERE (`age` = ?) AND (`first_name` = ?);",
 				args: []any{12, "liu"},
 			},
 			wantErr: nil,
