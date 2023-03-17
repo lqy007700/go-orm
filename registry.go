@@ -7,33 +7,38 @@ import (
 	"unicode"
 )
 
-type registry struct {
-	models map[reflect.Type]*model
-	lock   sync.RWMutex
+type Registry interface {
+	Get(val any) (*model, error)
+	Register(val any, opt ...ModelOpt) (*model, error)
 }
 
-func (r *registry) get(val any) (*model, error) {
-	r.lock.RLock()
+type registry struct {
+	models map[reflect.Type]*model
+	lock   sync.Map
+}
+
+func (r *registry) Get(val any) (*model, error) {
 	of := reflect.TypeOf(val)
-	m, ok := r.models[of]
-	r.lock.RUnlock()
-	if ok {
-		return m, nil
-	}
 
-	r.lock.Lock()
-	defer r.lock.Lock()
-	m, ok = r.models[of]
-	r.lock.RUnlock()
+	value, ok := r.lock.Load(of)
 	if ok {
-		return m, nil
+		return value.(*model), nil
 	}
+	return r.Register(val)
+}
 
+func (r *registry) Register(val any, opts ...ModelOpt) (*model, error) {
 	m, err := r.parseModel(val)
 	if err != nil {
 		return nil, err
 	}
-	r.models[of] = m
+
+	for _, opt := range opts {
+		opt(m)
+	}
+
+	typ := reflect.TypeOf(val)
+	r.lock.Store(typ, m)
 	return m, nil
 }
 

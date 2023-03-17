@@ -10,6 +10,7 @@ func Test_parseModel(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   any
+		opts    []ModelOpt
 		want    *model
 		wantErr error
 	}{
@@ -64,6 +65,20 @@ func Test_parseModel(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "with table name ",
+			input: TestModel{},
+			opts:  []ModelOpt{ModelWithTableName("a"), ModelWithColumnName("Id", "uid")},
+			want: &model{
+				tableName: "a",
+				fieldMap: map[string]*field{
+					"Id":        {colName: "uid"},
+					"FirstName": {colName: "first_name"},
+					"Age":       {colName: "age"},
+					"LastName":  {colName: "last_name"},
+				},
+			},
+		},
 	}
 
 	r := &registry{
@@ -71,7 +86,7 @@ func Test_parseModel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m, err := r.parseModel(tt.input)
+			m, err := r.Register(tt.input, tt.opts...)
 			assert.Equal(t, err, tt.wantErr)
 			if err != nil {
 				return

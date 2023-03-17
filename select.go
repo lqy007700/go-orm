@@ -37,7 +37,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 		t   = new(T)
 		err error
 	)
-	s.model, err = s.db.r.get(t)
+	s.model, err = s.db.r.Get(t)
 	if err != nil {
 		return nil, err
 	}
