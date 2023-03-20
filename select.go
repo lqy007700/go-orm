@@ -3,6 +3,7 @@ package go_orm
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 )
 
@@ -81,16 +82,6 @@ func (s *Selector[T]) Build() (*Query, error) {
 	}, nil
 }
 
-func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *Selector[T]) buildExpression(expression Expression) error {
 	switch expr := expression.(type) {
 	case nil:
@@ -142,4 +133,60 @@ func (s *Selector[T]) buildExpression(expression Expression) error {
 		return errors.New("不支持该表达式")
 	}
 	return nil
+}
+
+func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
+	build, err := s.Build()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.db.QueryContext(ctx, build.SQL, build.args)
+	if err != nil {
+		return nil, err
+	}
+
+	rows.Next()
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	vals := make([]any, 0, len(columns))
+	eleVals := make([]reflect.Value, 0, len(columns))
+	for _, column := range columns {
+		f := s.model.columnMap[column]
+
+		fdVal := reflect.New(f.typ)
+		eleVals = append(eleVals, fdVal.Elem())
+
+		vals = append(vals, fdVal.Interface())
+	}
+
+	err = rows.Scan(vals...)
+	if err != nil {
+		return nil, err
+	}
+
+	t := new(T)
+	tVal := reflect.ValueOf(t).Elem()
+	for i, column := range columns {
+		f := s.model.columnMap[column]
+		tVal.FieldByName(f.goName).Set(eleVals[i])
+	}
+	return t, nil
+}
+
+func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
+	//var db *sql.DB
+	//build, err := s.Build()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//queryContext, err := db.QueryContext(ctx, build.SQL, build.args)
+	//if err != nil {
+	//	return nil, err
+	//}
+	return nil, nil
 }

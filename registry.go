@@ -55,6 +55,7 @@ func (r *registry) parseModel(val any) (*model, error) {
 	fieldCnt := of.NumField()
 
 	fieldMap := make(map[string]*field)
+	columnMap := make(map[string]*field)
 	for i := 0; i < fieldCnt; i++ {
 		fd := of.Field(i)
 
@@ -73,9 +74,14 @@ func (r *registry) parseModel(val any) (*model, error) {
 			}
 		}
 
-		fieldMap[fd.Name] = &field{
+		fieldV := &field{
+			goName:  fd.Name,
 			colName: colName,
+			typ:     fd.Type,
 		}
+
+		fieldMap[fd.Name] = fieldV
+		columnMap[colName] = fieldV
 	}
 
 	var tableName string
@@ -90,6 +96,7 @@ func (r *registry) parseModel(val any) (*model, error) {
 	return &model{
 		tableName: tableName,
 		fieldMap:  fieldMap,
+		columnMap: columnMap,
 	}, nil
 }
 

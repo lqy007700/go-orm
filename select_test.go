@@ -1,7 +1,9 @@
 package go_orm
 
 import (
+	"context"
 	"database/sql"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -14,9 +16,7 @@ type TestModel struct {
 }
 
 func TestSelector_Build(t *testing.T) {
-
-	db, _ := NewDB()
-
+	db := memoryDB(t)
 	tests := []struct {
 		name    string
 		s       QueryBuilder
@@ -94,4 +94,68 @@ func TestSelector_Build(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestSelector_Get(t *testing.T) {
+	mockDb, _, err := sqlmock.New()
+	if err != nil {
+		return
+	}
+
+	tests := []struct {
+		name     string
+		query    string
+		mockErr  error
+		mockRows *sqlmock.Rows
+		wantErr  error
+		wantVal  *TestModel
+	}{
+		{
+			name:  "get data",
+			query: "SELECT .*",
+			mockRows: func() *sqlmock.Rows {
+				res := sqlmock.NewRows([]string{"id", "first_name", "age", "last_name"})
+				res.AddRow([]byte("1"), []byte("liu"), []byte("18"), []byte("quan"))
+				return res
+			}(),
+			wantVal: &TestModel{
+				Id:        1,
+				FirstName: "liu",
+				Age:       18,
+				LastName:  &sql.NullString{String: "quan", Valid: true},
+			},
+		},
+	}
+
+	db, err := OpenDB(mockDb)
+	if err != nil {
+		return
+	}
+
+	//for _, tc := range tests {
+	//	exp := mock.ExpectQuery(tc.query)
+	//	if tc.mockErr != nil {
+	//		exp.WillReturnError(tc.mockErr)
+	//	} else {
+	//		exp.WillReturnRows(tc.mockRows)
+	//	}
+	//}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			get, err := NewSelector[TestModel](db).Get(context.Background())
+			assert.Equal(t, tt.wantErr, err)
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tt.wantVal, get)
+		})
+	}
+}
+
+func memoryDB(t *testing.T) *DB {
+	orm, err := Open("sqlite3", "file:test.db?cache=shared&mode=memory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return orm
 }

@@ -1,10 +1,15 @@
 package go_orm
 
+import "reflect"
+
 type ModelOpt func(m *model)
 
 type model struct {
 	tableName string
 	fieldMap  map[string]*field
+
+	// 列名-字段名
+	columnMap map[string]*field
 }
 
 func ModelWithTableName(name string) ModelOpt {
@@ -26,7 +31,13 @@ func ModelWithColumn(field string, col *field) ModelOpt {
 }
 
 type field struct {
+	// 字段名
+	goName string
+
+	// 列名
 	colName string
+
+	typ reflect.Type
 }
 
 type TableName interface {
