@@ -1,4 +1,4 @@
-package go_orm
+package model
 
 import (
 	"reflect"
@@ -8,26 +8,26 @@ import (
 )
 
 type Registry interface {
-	Get(val any) (*model, error)
-	Register(val any, opt ...ModelOpt) (*model, error)
+	Get(val any) (*Model, error)
+	Register(val any, opt ...ModelOpt) (*Model, error)
 }
 
-type registry struct {
-	models map[reflect.Type]*model
+type Registrys struct {
+	Models map[reflect.Type]*Model
 	lock   sync.Map
 }
 
-func (r *registry) Get(val any) (*model, error) {
+func (r *Registrys) Get(val any) (*Model, error) {
 	of := reflect.TypeOf(val)
 
 	value, ok := r.lock.Load(of)
 	if ok {
-		return value.(*model), nil
+		return value.(*Model), nil
 	}
 	return r.Register(val)
 }
 
-func (r *registry) Register(val any, opts ...ModelOpt) (*model, error) {
+func (r *Registrys) Register(val any, opts ...ModelOpt) (*Model, error) {
 	m, err := r.parseModel(val)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (r *registry) Register(val any, opts ...ModelOpt) (*model, error) {
 	return m, nil
 }
 
-func (r *registry) parseModel(val any) (*model, error) {
+func (r *Registrys) parseModel(val any) (*Model, error) {
 	if val == nil {
 		return nil, nil
 	}
@@ -75,9 +75,10 @@ func (r *registry) parseModel(val any) (*model, error) {
 		}
 
 		fieldV := &field{
-			goName:  fd.Name,
-			colName: colName,
-			typ:     fd.Type,
+			GoName:  fd.Name,
+			ColName: colName,
+			Typ:     fd.Type,
+			offset:  fd.Offset,
 		}
 
 		fieldMap[fd.Name] = fieldV
@@ -93,10 +94,10 @@ func (r *registry) parseModel(val any) (*model, error) {
 		tableName = underscoreName(of.Name())
 	}
 
-	return &model{
-		tableName: tableName,
-		fieldMap:  fieldMap,
-		columnMap: columnMap,
+	return &Model{
+		TableName: tableName,
+		FieldMap:  fieldMap,
+		ColumnMap: columnMap,
 	}, nil
 }
 

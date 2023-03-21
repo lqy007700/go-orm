@@ -2,13 +2,14 @@ package go_orm
 
 import (
 	"database/sql"
+	"go-orm/internal/model"
 	"reflect"
 )
 
 type DBOption func(db *DB)
 
 type DB struct {
-	r  *registry
+	r  *model.Registrys
 	db *sql.DB
 }
 
@@ -23,8 +24,8 @@ func Open(driver, dsn string, opts ...DBOption) (*DB, error) {
 
 func OpenDB(db *sql.DB, opts ...DBOption) (*DB, error) {
 	res := &DB{
-		r: &registry{
-			models: map[reflect.Type]*model{},
+		r: &model.Registrys{
+			Models: map[reflect.Type]*model.Model{},
 		},
 		db: db,
 	}
@@ -35,7 +36,7 @@ func OpenDB(db *sql.DB, opts ...DBOption) (*DB, error) {
 	return res, nil
 }
 
-func DBWithRegistry(r *registry) DBOption {
+func DBWithRegistry(r *model.Registrys) DBOption {
 	return func(db *DB) {
 		db.r = r
 	}

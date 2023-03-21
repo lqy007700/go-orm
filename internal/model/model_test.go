@@ -1,7 +1,8 @@
-package go_orm
+package model
 
 import (
 	"github.com/stretchr/testify/assert"
+	"go-orm"
 	"reflect"
 	"testing"
 )
@@ -16,28 +17,28 @@ func Test_parseModel(t *testing.T) {
 	}{
 		{
 			name:  "ptr",
-			input: &TestModel{},
+			input: &go_orm.TestModel{},
 			want: &model{
 				tableName: "test_model",
 				fieldMap: map[string]*field{
-					"Id":        {colName: "id"},
-					"FirstName": {colName: "first_name"},
-					"Age":       {colName: "age"},
-					"LastName":  {colName: "last_name"},
+					"Id":        {ColName: "id"},
+					"FirstName": {ColName: "first_name"},
+					"Age":       {ColName: "age"},
+					"LastName":  {ColName: "last_name"},
 				},
 			},
 			wantErr: nil,
 		},
 		{
 			name:  "struct",
-			input: TestModel{},
+			input: go_orm.TestModel{},
 			want: &model{
 				tableName: "test_model",
 				fieldMap: map[string]*field{
-					"Id":        {colName: "id"},
-					"FirstName": {colName: "first_name"},
-					"Age":       {colName: "age"},
-					"LastName":  {colName: "last_name"},
+					"Id":        {ColName: "id"},
+					"FirstName": {ColName: "first_name"},
+					"Age":       {ColName: "age"},
+					"LastName":  {ColName: "last_name"},
 				},
 			},
 			wantErr: nil,
@@ -60,28 +61,28 @@ func Test_parseModel(t *testing.T) {
 				tableName: "column_tag",
 				fieldMap: map[string]*field{
 					"ID": {
-						colName: "ids",
+						ColName: "ids",
 					},
 				},
 			},
 		},
 		{
 			name:  "with table name ",
-			input: TestModel{},
+			input: go_orm.TestModel{},
 			opts:  []ModelOpt{ModelWithTableName("a"), ModelWithColumnName("Id", "uid")},
 			want: &model{
 				tableName: "a",
 				fieldMap: map[string]*field{
-					"Id":        {colName: "uid"},
-					"FirstName": {colName: "first_name"},
-					"Age":       {colName: "age"},
-					"LastName":  {colName: "last_name"},
+					"Id":        {ColName: "uid"},
+					"FirstName": {ColName: "first_name"},
+					"Age":       {ColName: "age"},
+					"LastName":  {ColName: "last_name"},
 				},
 			},
 		},
 	}
 
-	r := &registry{
+	r := &go_orm.registry{
 		models: map[reflect.Type]*model{},
 	}
 	for _, tt := range tests {

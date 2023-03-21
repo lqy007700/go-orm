@@ -3,8 +3,8 @@ package go_orm
 import (
 	"context"
 	"errors"
-	err2 "go-orm/internal/err"
-	"reflect"
+	model2 "go-orm/internal/model"
+	"go-orm/internal/valuer"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ type Selector[T any] struct {
 	Args  []any
 	table string
 	where []Predicate
-	model *model
+	model *model2.Model
 
 	db *DB
 }
@@ -48,7 +48,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 	s.sb.WriteByte('`')
 
 	if s.table == "" {
-		s.sb.WriteString(s.model.tableName)
+		s.sb.WriteString(s.model.TableName)
 	} else {
 		// 处理 db.table_name 的情况
 		segs := strings.SplitN(s.table, ".", 2)
@@ -89,11 +89,11 @@ func (s *Selector[T]) buildExpression(expression Expression) error {
 		return nil
 	case Column:
 		s.sb.WriteByte('`')
-		f, ok := s.model.fieldMap[expr.name]
+		f, ok := s.model.FieldMap[expr.name]
 		if !ok {
 			return errors.New("字段不存在")
 		}
-		s.sb.WriteString(f.colName)
+		s.sb.WriteString(f.ColName)
 		s.sb.WriteByte('`')
 	case Value:
 		s.sb.WriteByte('?')
@@ -147,58 +147,21 @@ func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
 		return nil, err
 	}
 
-	if !rows.Next() {
-		return nil, ErrNoRows
-	}
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(columns) > len(s.model.fieldMap) {
-		return nil, err2.ErrTooManyReturnedColumns
-	}
-
-	vals := make([]any, 0, len(columns))
-	eleVals := make([]reflect.Value, 0, len(columns))
-	for _, column := range columns {
-		f := s.model.columnMap[column]
-
-		fdVal := reflect.New(f.typ)
-		eleVals = append(eleVals, fdVal.Elem())
-
-		vals = append(vals, fdVal.Interface())
-	}
-
-	err = rows.Scan(vals...)
-	if err != nil {
-		return nil, err
-	}
-
 	t := new(T)
-	tVal := reflect.ValueOf(t).Elem()
-	for i, column := range columns {
-		f, ok := s.model.columnMap[column]
-		if !ok {
-			return nil, err2.NewErrUnknownColumn(column)
-		}
-		tVal.FieldByName(f.goName).Set(eleVals[i])
-	}
-	return t, nil
+	val := valuer.NewReflectValue(t, s.model)
+	return t, val.SetColumns(rows)
 }
 
-func (s *Selector[T]) GetMulti(ctx
-context.Context) ([]*T, error) {
-//var db *sql.DB
-//build, err := s.Build()
-//if err != nil {
-//	return nil, err
-//}
-//
-//queryContext, err := db.QueryContext(ctx, build.SQL, build.args)
-//if err != nil {
-//	return nil, err
-//}
-return nil, nil
+func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
+	//var db *sql.DB
+	//build, err := s.Build()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//queryContext, err := db.QueryContext(ctx, build.SQL, build.args)
+	//if err != nil {
+	//	return nil, err
+	//}
+	return nil, nil
 }
