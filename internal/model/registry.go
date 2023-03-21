@@ -78,7 +78,7 @@ func (r *Registrys) parseModel(val any) (*Model, error) {
 			GoName:  fd.Name,
 			ColName: colName,
 			Typ:     fd.Type,
-			offset:  fd.Offset,
+			Offset:  fd.Offset,
 		}
 
 		fieldMap[fd.Name] = fieldV

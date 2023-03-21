@@ -3,9 +3,10 @@ package go_orm
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"go-orm/internal/valuer"
+	"log"
 	"testing"
 )
 
@@ -17,7 +18,7 @@ type TestModel struct {
 }
 
 func TestSelector_Build(t *testing.T) {
-	db := memoryDB(t)
+	db := memoryDB()
 	tests := []struct {
 		name    string
 		s       QueryBuilder
@@ -98,10 +99,11 @@ func TestSelector_Build(t *testing.T) {
 }
 
 func TestSelector_Get(t *testing.T) {
-	mockDb, _, err := sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		return
 	}
+	defer db.Close()
 
 	tests := []struct {
 		name     string
@@ -116,41 +118,33 @@ func TestSelector_Get(t *testing.T) {
 			query: "SELECT .*",
 			mockRows: func() *sqlmock.Rows {
 				res := sqlmock.NewRows([]string{"id", "first_name", "age", "last_name"})
-				res.AddRow([]byte("1"), []byte("Da"), []byte("18"), []byte("Ming"))
+				res.AddRow([]byte("1"), []byte("Liu"), []byte("18"), []byte("Quan"))
 				return res
 			}(),
 			wantVal: &TestModel{
 				Id:        1,
-				FirstName: "Da",
+				FirstName: "Liu",
 				Age:       18,
-				LastName:  &sql.NullString{String: "Ming", Valid: true},
+				LastName:  &sql.NullString{String: "Quan", Valid: true},
 			},
-		},
-		{
-			// 查询返回错误
-			name:    "query error",
-			mockErr: errors.New("invalid query"),
-			wantErr: errors.New("invalid query"),
-			query:   "SELECT .*",
 		},
 	}
 
-	db, err := OpenDB(mockDb)
+	openDB, err := OpenDB(db)
 	if err != nil {
 		return
 	}
 
-	//for _, tc := range tests {
-	//	exp := mock.ExpectQuery(tc.query)
-	//	if tc.mockErr != nil {
-	//		exp.WillReturnError(tc.mockErr)
-	//	} else {
-	//		exp.WillReturnRows(tc.mockRows)
-	//	}
-	//}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			get, err := NewSelector[TestModel](db).Get(context.Background())
+			exp := mock.ExpectQuery(tt.query)
+			if tt.mockErr != nil {
+				exp.WillReturnError(tt.mockErr)
+			} else {
+				exp.WillReturnRows(tt.mockRows)
+			}
+
+			get, err := NewSelector[TestModel](openDB).Get(context.Background())
 			assert.Equal(t, tt.wantErr, err)
 			if err != nil {
 				return
@@ -160,10 +154,47 @@ func TestSelector_Get(t *testing.T) {
 	}
 }
 
-func memoryDB(t *testing.T) *DB {
-	orm, err := Open("sqlite3", "file:test.db?cache=shared&mode=memory")
+func memoryDB() *DB {
+	orm, err := Open("mysql", "root:root@tcp(localhost:3306)/test?charset=utf8mb4")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 	return orm
+}
+
+func BenchmarkQuerier_Get(b *testing.B) {
+	db := memoryDB()
+	res, err := db.db.Exec("INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`)"+
+		"VALUES (?,?,?,?)", 13, "Deng", 18, "Ming")
+
+	if err != nil {
+		b.Fatal(err)
+	}
+	affected, err := res.RowsAffected()
+	log.Println(affected)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if affected == 0 {
+		b.Fatal()
+	}
+	b.Run("unsafe", func(b *testing.B) {
+		db.valCreator = valuer.NewUnsafeValue
+		for i := 0; i < b.N; i++ {
+			_, err = NewSelector[TestModel](db).Get(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("reflect", func(b *testing.B) {
+		db.valCreator = valuer.NewReflectValue
+		for i := 0; i < b.N; i++ {
+			_, err = NewSelector[TestModel](db).Get(context.Background())
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }

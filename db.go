@@ -2,7 +2,9 @@ package go_orm
 
 import (
 	"database/sql"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"go-orm/internal/model"
+	"go-orm/internal/valuer"
 	"reflect"
 )
 
@@ -11,6 +13,8 @@ type DBOption func(db *DB)
 type DB struct {
 	r  *model.Registrys
 	db *sql.DB
+
+	valCreator valuer.Creator
 }
 
 func Open(driver, dsn string, opts ...DBOption) (*DB, error) {
@@ -27,13 +31,20 @@ func OpenDB(db *sql.DB, opts ...DBOption) (*DB, error) {
 		r: &model.Registrys{
 			Models: map[reflect.Type]*model.Model{},
 		},
-		db: db,
+		db:         db,
+		valCreator: valuer.NewUnsafeValue,
 	}
 
 	for _, opt := range opts {
 		opt(res)
 	}
 	return res, nil
+}
+
+func DBUseReflectValuer() DBOption {
+	return func(db *DB) {
+		db.valCreator = valuer.NewReflectValue
+	}
 }
 
 func DBWithRegistry(r *model.Registrys) DBOption {

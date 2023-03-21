@@ -12,7 +12,7 @@ type ReflectValue struct {
 	model *go_orm.Model
 }
 
-func NewReflectValue(t any, model *go_orm.Model) *ReflectValue {
+func NewReflectValue(t any, model *go_orm.Model) Value {
 	return &ReflectValue{
 		t:     t,
 		model: model,

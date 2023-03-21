@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	model2 "go-orm/internal/model"
-	"go-orm/internal/valuer"
 	"strings"
 )
 
@@ -142,13 +141,13 @@ func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
 		return nil, err
 	}
 
-	rows, err := s.db.db.QueryContext(ctx, build.SQL, build.Args...)
+	rows, err := s.db.db.QueryContext(ctx, build.SQL, s.Args...)
 	if err != nil {
 		return nil, err
 	}
-
 	t := new(T)
-	val := valuer.NewReflectValue(t, s.model)
+
+	val := s.db.valCreator(t, s.model)
 	return t, val.SetColumns(rows)
 }
 

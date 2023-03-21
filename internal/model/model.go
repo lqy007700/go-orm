@@ -41,7 +41,7 @@ type field struct {
 
 	// 表达相对量的概念
 	// 偏移量
-	offset uintptr
+	Offset uintptr
 }
 
 type TableName interface {
