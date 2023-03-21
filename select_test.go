@@ -3,6 +3,7 @@ package go_orm
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -52,7 +53,7 @@ func TestSelector_Build(t *testing.T) {
 			s:    NewSelector[TestModel](db).Where(C("Id").EQ(12)),
 			want: &Query{
 				SQL:  "SELECT * FROM `test_model` WHERE `id` = ?;",
-				args: []any{12},
+				Args: []any{12},
 			},
 			wantErr: nil,
 		},
@@ -61,7 +62,7 @@ func TestSelector_Build(t *testing.T) {
 			s:    NewSelector[TestModel](db).Where(C("Age").GT(18), C("Age").LT(35)),
 			want: &Query{
 				SQL:  "SELECT * FROM `test_model` WHERE (`age` > ?) AND (`age` < ?);",
-				args: []any{18, 35},
+				Args: []any{18, 35},
 			},
 			wantErr: nil,
 		},
@@ -70,7 +71,7 @@ func TestSelector_Build(t *testing.T) {
 			s:    NewSelector[TestModel](db).Where(Not(C("Age").GT(18))),
 			want: &Query{
 				SQL:  "SELECT * FROM `test_model` WHERE NOT (`age` > ?);",
-				args: []any{18},
+				Args: []any{18},
 			},
 			wantErr: nil,
 		},
@@ -79,7 +80,7 @@ func TestSelector_Build(t *testing.T) {
 			s:    NewSelector[TestModel](db).Where(C("Age").EQ(12), C("FirstName").EQ("liu")),
 			want: &Query{
 				SQL:  "SELECT * FROM `test_model` WHERE (`age` = ?) AND (`first_name` = ?);",
-				args: []any{12, "liu"},
+				Args: []any{12, "liu"},
 			},
 			wantErr: nil,
 		},
@@ -115,15 +116,22 @@ func TestSelector_Get(t *testing.T) {
 			query: "SELECT .*",
 			mockRows: func() *sqlmock.Rows {
 				res := sqlmock.NewRows([]string{"id", "first_name", "age", "last_name"})
-				res.AddRow([]byte("1"), []byte("liu"), []byte("18"), []byte("quan"))
+				res.AddRow([]byte("1"), []byte("Da"), []byte("18"), []byte("Ming"))
 				return res
 			}(),
 			wantVal: &TestModel{
 				Id:        1,
-				FirstName: "liu",
+				FirstName: "Da",
 				Age:       18,
-				LastName:  &sql.NullString{String: "quan", Valid: true},
+				LastName:  &sql.NullString{String: "Ming", Valid: true},
 			},
+		},
+		{
+			// 查询返回错误
+			name:    "query error",
+			mockErr: errors.New("invalid query"),
+			wantErr: errors.New("invalid query"),
+			query:   "SELECT .*",
 		},
 	}
 
