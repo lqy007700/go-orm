@@ -3,6 +3,7 @@ package go_orm
 import (
 	"context"
 	"errors"
+	err2 "go-orm/internal/err"
 	model2 "go-orm/internal/model"
 	"strings"
 )
@@ -14,13 +15,23 @@ type Selector[T any] struct {
 	where []Predicate
 	model *model2.Model
 
-	db *DB
+	db      *DB
+	columns []Selectable
+}
+
+type Selectable interface {
+	selectable()
 }
 
 func NewSelector[T any](db *DB) *Selector[T] {
 	return &Selector[T]{
 		db: db,
 	}
+}
+
+func (s *Selector[T]) Select(cols ...Selectable) *Selector[T] {
+	s.columns = cols
+	return s
 }
 
 func (s *Selector[T]) From(table string) *Selector[T] {
@@ -43,7 +54,48 @@ func (s *Selector[T]) Build() (*Query, error) {
 		return nil, err
 	}
 
-	s.sb.WriteString("SELECT * FROM ")
+	s.sb.WriteString("SELECT ")
+	if len(s.columns) == 0 {
+		s.sb.WriteByte('*')
+	} else {
+		for i, column := range s.columns {
+			switch c := column.(type) {
+			case Column:
+				fd, ok := s.model.FieldMap[c.name]
+				if !ok {
+					return nil, err2.NewErrUnknownColumn(c.name)
+				}
+				if i > 0 {
+					s.sb.WriteByte(',')
+				}
+				s.sb.WriteByte('`')
+				s.sb.WriteString(fd.ColName)
+				s.sb.WriteByte('`')
+			case Aggregate:
+				if i > 0 {
+					s.sb.WriteByte(',')
+				}
+
+				s.sb.WriteString(c.fn)
+				s.sb.WriteByte('(')
+
+				fd, ok := s.model.FieldMap[c.arg]
+				if !ok {
+					return nil, err2.NewErrUnknownColumn(c.arg)
+				}
+				s.sb.WriteByte('`')
+				s.sb.WriteString(fd.ColName)
+				s.sb.WriteByte('`')
+				s.sb.WriteByte(')')
+			case RawExpr:
+				s.sb.WriteString(c.raw)
+				if len(c.args) > 0 {
+					s.Args = append(s.Args, c.args)
+				}
+			}
+		}
+	}
+	s.sb.WriteString(" FROM ")
 	s.sb.WriteByte('`')
 
 	if s.table == "" {

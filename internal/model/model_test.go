@@ -11,7 +11,7 @@ func Test_parseModel(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   any
-		opts    []ModelOpt
+		opts    []Opt
 		want    *model
 		wantErr error
 	}{
@@ -69,7 +69,7 @@ func Test_parseModel(t *testing.T) {
 		{
 			name:  "with table name ",
 			input: go_orm.TestModel{},
-			opts:  []ModelOpt{ModelWithTableName("a"), ModelWithColumnName("Id", "uid")},
+			opts:  []Opt{WithTableName("a"), WithColumnName("Id", "uid")},
 			want: &model{
 				tableName: "a",
 				fieldMap: map[string]*field{

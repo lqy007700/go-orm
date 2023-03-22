@@ -9,7 +9,7 @@ import (
 
 type Registry interface {
 	Get(val any) (*Model, error)
-	Register(val any, opt ...ModelOpt) (*Model, error)
+	Register(val any, opt ...Opt) (*Model, error)
 }
 
 type Registrys struct {
@@ -27,7 +27,7 @@ func (r *Registrys) Get(val any) (*Model, error) {
 	return r.Register(val)
 }
 
-func (r *Registrys) Register(val any, opts ...ModelOpt) (*Model, error) {
+func (r *Registrys) Register(val any, opts ...Opt) (*Model, error) {
 	m, err := r.parseModel(val)
 	if err != nil {
 		return nil, err

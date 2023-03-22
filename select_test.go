@@ -198,3 +198,53 @@ func BenchmarkQuerier_Get(b *testing.B) {
 		}
 	})
 }
+
+func TestSelector_Select(t *testing.T) {
+	db := memoryDB()
+	type testCase[T any] struct {
+		name string
+		s    QueryBuilder
+		cols []string
+		want *Query
+	}
+	tests := []testCase[TestModel]{
+		{
+			name: "from",
+			s:    NewSelector[TestModel](db).Select(C("Id"), C("Age")),
+			want: &Query{
+				SQL: "SELECT `id`,`age` FROM `test_model`;",
+			},
+		},
+		{
+			name: "*",
+			s:    NewSelector[TestModel](db).Select(),
+			want: &Query{
+				SQL: "SELECT * FROM `test_model`;",
+			},
+		},
+
+		{
+			name: "聚合函数",
+			s:    NewSelector[TestModel](db).Select(Avg("Age"), C("Id")),
+			want: &Query{
+				SQL: "SELECT AVG(`age`),`id` FROM `test_model`;",
+			},
+		},
+		{
+			name: "复杂写法",
+			s:    NewSelector[TestModel](db).Select(Raw("select a from test")),
+			want: &Query{
+				SQL: "SELECT select a from test FROM `test_model`;",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			build, err := tt.s.Build()
+			if err != nil {
+				return
+			}
+			assert.Equal(t, tt.want, build)
+		})
+	}
+}

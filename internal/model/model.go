@@ -2,7 +2,7 @@ package model
 
 import "reflect"
 
-type ModelOpt func(m *Model)
+type Opt func(m *Model)
 
 type Model struct {
 	TableName string
@@ -12,19 +12,19 @@ type Model struct {
 	ColumnMap map[string]*field
 }
 
-func ModelWithTableName(name string) ModelOpt {
+func WithTableName(name string) Opt {
 	return func(m *Model) {
 		m.TableName = name
 	}
 }
 
-func ModelWithColumnName(field string, colName string) ModelOpt {
+func WithColumnName(field string, colName string) Opt {
 	return func(m *Model) {
 		m.FieldMap[field].ColName = colName
 	}
 }
 
-func ModelWithColumn(field string, col *field) ModelOpt {
+func WithColumn(field string, col *field) Opt {
 	return func(m *Model) {
 		m.FieldMap[field] = col
 	}

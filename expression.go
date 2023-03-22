@@ -5,3 +5,21 @@ package go_orm
 type Expression interface {
 	expr()
 }
+
+type RawExpr struct {
+	raw  string
+	args []any
+}
+
+func (r RawExpr) selectable() {}
+
+func Raw(raw string, args ...any) RawExpr {
+	return RawExpr{
+		raw:  raw,
+		args: args,
+	}
+}
+
+func (r RawExpr) AsPredicate() Predicate {
+	return Predicate{}
+}
