@@ -16,6 +16,8 @@ type Selector[T any] struct {
 	having  []Predicate
 	columns []Selectable
 	groupBy []Column
+	limit   int32
+	offset  int32
 
 	model *model2.Model
 	db    *DB
@@ -56,6 +58,16 @@ func (s *Selector[T]) GroupBy(ps ...Column) *Selector[T] {
 	return s
 }
 
+func (s *Selector[T]) Limit(l int32) *Selector[T] {
+	s.limit = l
+	return s
+}
+
+func (s *Selector[T]) Offset(o int32) *Selector[T] {
+	s.offset = o
+	return s
+}
+
 func (s *Selector[T]) Build() (*Query, error) {
 	var (
 		t   = new(T)
@@ -80,6 +92,16 @@ func (s *Selector[T]) Build() (*Query, error) {
 
 	if err = s.buildGroupBy(); err != nil {
 		return nil, err
+	}
+
+	if s.limit > 0 {
+		s.sb.WriteString(" LIMIT ?")
+		s.addArgs(s.limit)
+	}
+
+	if s.offset > 0 {
+		s.sb.WriteString(" OFFSET ?")
+		s.addArgs(s.offset)
 	}
 
 	s.sb.WriteByte(';')
@@ -289,4 +311,11 @@ func (s *Selector[T]) buildGroupBy() error {
 		}
 	}
 	return nil
+}
+
+func (s *Selector[T]) addArgs(args ...any) {
+	if s.Args == nil {
+		s.Args = make([]any, 0, 8)
+	}
+	s.Args = append(s.Args, args)
 }
