@@ -7,6 +7,7 @@ type Opt func(m *Model)
 type Model struct {
 	TableName string
 	FieldMap  map[string]*field
+	Columns   []*field
 
 	// 列名-字段名
 	ColumnMap map[string]*field
@@ -42,6 +43,8 @@ type field struct {
 	// 表达相对量的概念
 	// 偏移量
 	Offset uintptr
+
+	Index []int
 }
 
 type TableName interface {

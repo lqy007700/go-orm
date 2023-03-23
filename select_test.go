@@ -263,7 +263,7 @@ func TestSelector_Select(t *testing.T) {
 			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("Age"), C("FirstName")).Limit(10).Offset(20),
 			want: &Query{
 				SQL:  "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `age`,`first_name` LIMIT ? OFFSET ?;",
-				Args: []any{10, 20},
+				Args: []any{int32(10), int32(20)},
 			},
 		},
 		{
