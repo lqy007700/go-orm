@@ -1,8 +1,9 @@
 package go_orm
 
 type Aggregate struct {
-	arg string
-	fn  string
+	arg   string
+	fn    string
+	alias string
 }
 
 func (a Aggregate) selectable() {}
@@ -26,4 +27,9 @@ func Max(col string) Aggregate {
 		arg: col,
 		fn:  "MAX",
 	}
+}
+
+func (a Aggregate) As(as string) Aggregate {
+	a.alias = as
+	return a
 }

@@ -55,46 +55,10 @@ func (s *Selector[T]) Build() (*Query, error) {
 	}
 
 	s.sb.WriteString("SELECT ")
-	if len(s.columns) == 0 {
-		s.sb.WriteByte('*')
-	} else {
-		for i, column := range s.columns {
-			switch c := column.(type) {
-			case Column:
-				fd, ok := s.model.FieldMap[c.name]
-				if !ok {
-					return nil, err2.NewErrUnknownColumn(c.name)
-				}
-				if i > 0 {
-					s.sb.WriteByte(',')
-				}
-				s.sb.WriteByte('`')
-				s.sb.WriteString(fd.ColName)
-				s.sb.WriteByte('`')
-			case Aggregate:
-				if i > 0 {
-					s.sb.WriteByte(',')
-				}
-
-				s.sb.WriteString(c.fn)
-				s.sb.WriteByte('(')
-
-				fd, ok := s.model.FieldMap[c.arg]
-				if !ok {
-					return nil, err2.NewErrUnknownColumn(c.arg)
-				}
-				s.sb.WriteByte('`')
-				s.sb.WriteString(fd.ColName)
-				s.sb.WriteByte('`')
-				s.sb.WriteByte(')')
-			case RawExpr:
-				s.sb.WriteString(c.raw)
-				if len(c.args) > 0 {
-					s.Args = append(s.Args, c.args)
-				}
-			}
-		}
+	if err = s.buildColumns(); err != nil {
+		return nil, err
 	}
+
 	s.sb.WriteString(" FROM ")
 	s.sb.WriteByte('`')
 
@@ -215,4 +179,72 @@ func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
 	//	return nil, err
 	//}
 	return nil, nil
+}
+
+func (s *Selector[T]) buildColumns() error {
+	if len(s.columns) == 0 {
+		s.sb.WriteByte('*')
+	} else {
+		for i, column := range s.columns {
+			if i > 0 {
+				s.sb.WriteByte(',')
+			}
+			switch c := column.(type) {
+			case Column:
+				if err := s.buildColumn(c.name, c.alias); err != nil {
+					return err
+				}
+			case Aggregate:
+				if err := s.buildAggregate(c); err != nil {
+					return err
+				}
+			case RawExpr:
+				s.sb.WriteString(c.raw)
+				if len(c.args) > 0 {
+					s.Args = append(s.Args, c.args)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Selector[T]) buildColumn(name, alias string) error {
+	s.sb.WriteByte('`')
+	fd, ok := s.model.FieldMap[name]
+	if !ok {
+		return err2.NewErrUnknownColumn(name)
+	}
+	s.sb.WriteString(fd.ColName)
+	s.sb.WriteByte('`')
+
+	s.buildAs(alias)
+	return nil
+}
+
+func (s *Selector[T]) buildAs(alias string) {
+	if alias != "" {
+		s.sb.WriteString(" as ")
+		s.sb.WriteByte('`')
+		s.sb.WriteString(alias)
+		s.sb.WriteByte('`')
+	}
+}
+
+func (s *Selector[T]) buildAggregate(c Aggregate) error {
+	s.sb.WriteString(c.fn)
+	s.sb.WriteByte('(')
+
+	fd, ok := s.model.FieldMap[c.arg]
+	if !ok {
+		return err2.NewErrUnknownColumn(c.arg)
+	}
+	s.sb.WriteByte('`')
+	s.sb.WriteString(fd.ColName)
+	s.sb.WriteByte('`')
+	s.sb.WriteByte(')')
+
+	s.buildAs(c.alias)
+
+	return nil
 }

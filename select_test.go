@@ -209,14 +209,14 @@ func TestSelector_Select(t *testing.T) {
 	}
 	tests := []testCase[TestModel]{
 		{
-			name: "from",
+			name: "指定字段",
 			s:    NewSelector[TestModel](db).Select(C("Id"), C("Age")),
 			want: &Query{
 				SQL: "SELECT `id`,`age` FROM `test_model`;",
 			},
 		},
 		{
-			name: "*",
+			name: "查询所有",
 			s:    NewSelector[TestModel](db).Select(),
 			want: &Query{
 				SQL: "SELECT * FROM `test_model`;",
@@ -235,6 +235,20 @@ func TestSelector_Select(t *testing.T) {
 			s:    NewSelector[TestModel](db).Select(Raw("select a from test")),
 			want: &Query{
 				SQL: "SELECT select a from test FROM `test_model`;",
+			},
+		},
+		{
+			name: "别名",
+			s:    NewSelector[TestModel](db).Select(C("Age").As("a"), C("FirstName").As("f")),
+			want: &Query{
+				SQL: "SELECT `age` as `a`,`first_name` as `f` FROM `test_model`;",
+			},
+		},
+		{
+			name: "聚合函数别名",
+			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")),
+			want: &Query{
+				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model`;",
 			},
 		},
 	}

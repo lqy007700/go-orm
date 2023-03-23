@@ -24,12 +24,18 @@ func (o op) String() string {
 func (p Predicate) expr() {}
 
 type Column struct {
-	name string
+	name  string
+	alias string
 }
 
 func (c Column) selectable() {}
 
 func (c Column) expr() {}
+
+func (c Column) As(as string) Column {
+	c.alias = as
+	return c
+}
 
 type Value struct {
 	val any
