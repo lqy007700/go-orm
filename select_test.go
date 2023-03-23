@@ -253,16 +253,32 @@ func TestSelector_Select(t *testing.T) {
 		},
 		{
 			name: "group by",
-			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("a"), C("f")),
+			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("Age"), C("FirstName")),
 			want: &Query{
-				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `a`,`f`;",
+				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `age`,`first_name`;",
 			},
 		},
 		{
 			name: "limit offset",
-			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("a"), C("f")).Limit(10).Offset(20),
+			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("Age"), C("FirstName")).Limit(10).Offset(20),
 			want: &Query{
-				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `a`,`f` LIMIT 10, OFFSET 20;",
+				SQL:  "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `age`,`first_name` LIMIT ? OFFSET ?;",
+				Args: []any{10, 20},
+			},
+		},
+		{
+			name: "having",
+			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("Age"), C("FirstName")).Having(C("Age").EQ(1)),
+			want: &Query{
+				SQL:  "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `age`,`first_name` HAVING `age` = ?;",
+				Args: []any{1},
+			},
+		},
+		{
+			name: "order by ",
+			s:    NewSelector[TestModel](db).Select(C("Age")).OrderBy(Asc("age")),
+			want: &Query{
+				SQL: "SELECT `age` FROM `test_model` ORDER BY `age` ASC;",
 			},
 		},
 	}
@@ -270,6 +286,7 @@ func TestSelector_Select(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			build, err := tt.s.Build()
 			if err != nil {
+				t.Fatal(err)
 				return
 			}
 			assert.Equal(t, tt.want, build)

@@ -16,6 +16,7 @@ type Selector[T any] struct {
 	having  []Predicate
 	columns []Selectable
 	groupBy []Column
+	orderBy []OrderBy
 	limit   int32
 	offset  int32
 
@@ -50,6 +51,11 @@ func (s *Selector[T]) Where(ps ...Predicate) *Selector[T] {
 
 func (s *Selector[T]) Having(ps ...Predicate) *Selector[T] {
 	s.having = ps
+	return s
+}
+
+func (s *Selector[T]) OrderBy(ps ...OrderBy) *Selector[T] {
+	s.orderBy = ps
 	return s
 }
 
@@ -91,6 +97,14 @@ func (s *Selector[T]) Build() (*Query, error) {
 	}
 
 	if err = s.buildGroupBy(); err != nil {
+		return nil, err
+	}
+
+	if err = s.buildHaving(); err != nil {
+		return nil, err
+	}
+
+	if err = s.buildOrderBy(); err != nil {
 		return nil, err
 	}
 
@@ -285,14 +299,7 @@ func (s *Selector[T]) buildTableName() {
 func (s *Selector[T]) buildWhere() error {
 	if len(s.where) > 0 {
 		s.sb.WriteString(" WHERE ")
-		pred := s.where[0]
-		for i := 1; i < len(s.where); i++ {
-			pred = pred.And(s.where[i])
-		}
-		err := s.buildExpression(pred)
-		if err != nil {
-			return err
-		}
+		return s.buildPredicates(s.where)
 	}
 	return nil
 }
@@ -313,9 +320,62 @@ func (s *Selector[T]) buildGroupBy() error {
 	return nil
 }
 
+func (s *Selector[T]) buildHaving() error {
+	if len(s.having) > 0 {
+		s.sb.WriteString(" HAVING ")
+		return s.buildPredicates(s.having)
+	}
+	return nil
+}
+
 func (s *Selector[T]) addArgs(args ...any) {
 	if s.Args == nil {
 		s.Args = make([]any, 0, 8)
 	}
-	s.Args = append(s.Args, args)
+	s.Args = append(s.Args, args...)
+}
+
+func (s *Selector[T]) buildPredicates(ps []Predicate) error {
+	p := ps[0]
+	for i := 1; i < len(ps); i++ {
+		p = p.And(ps[i])
+	}
+	return s.buildExpression(p)
+}
+
+func (s *Selector[T]) buildOrderBy() error {
+	if len(s.orderBy) > 0 {
+		s.sb.WriteString(" ORDER BY ")
+
+		for i, by := range s.orderBy {
+			if i > 0 {
+				s.sb.WriteByte(',')
+			}
+
+			s.sb.WriteByte('`')
+			s.sb.WriteString(by.col)
+			s.sb.WriteByte('`')
+			s.sb.WriteString(" " + by.order)
+		}
+	}
+	return nil
+}
+
+type OrderBy struct {
+	col   string
+	order string
+}
+
+func Asc(col string) OrderBy {
+	return OrderBy{
+		col:   col,
+		order: "ASC",
+	}
+}
+
+func Desc(col string) OrderBy {
+	return OrderBy{
+		col:   col,
+		order: "DESC",
+	}
 }
