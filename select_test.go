@@ -251,6 +251,13 @@ func TestSelector_Select(t *testing.T) {
 				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model`;",
 			},
 		},
+		{
+			name: "group by",
+			s:    NewSelector[TestModel](db).Select(Avg("Age").As("a"), Min("FirstName").As("f")).GroupBy(C("a"), C("f")),
+			want: &Query{
+				SQL: "SELECT AVG(`age`) as `a`,MIN(`first_name`) as `f` FROM `test_model` GROUP BY `a`,`f`;",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -9,14 +9,16 @@ import (
 )
 
 type Selector[T any] struct {
-	sb    strings.Builder
-	Args  []any
-	table string
-	where []Predicate
-	model *model2.Model
-
-	db      *DB
+	sb      strings.Builder
+	Args    []any
+	table   string
+	where   []Predicate
+	having  []Predicate
 	columns []Selectable
+	groupBy []Column
+
+	model *model2.Model
+	db    *DB
 }
 
 type Selectable interface {
@@ -44,6 +46,16 @@ func (s *Selector[T]) Where(ps ...Predicate) *Selector[T] {
 	return s
 }
 
+func (s *Selector[T]) Having(ps ...Predicate) *Selector[T] {
+	s.having = ps
+	return s
+}
+
+func (s *Selector[T]) GroupBy(ps ...Column) *Selector[T] {
+	s.groupBy = ps
+	return s
+}
+
 func (s *Selector[T]) Build() (*Query, error) {
 	var (
 		t   = new(T)
@@ -58,37 +70,16 @@ func (s *Selector[T]) Build() (*Query, error) {
 	if err = s.buildColumns(); err != nil {
 		return nil, err
 	}
-
 	s.sb.WriteString(" FROM ")
-	s.sb.WriteByte('`')
 
-	if s.table == "" {
-		s.sb.WriteString(s.model.TableName)
-	} else {
-		// 处理 db.table_name 的情况
-		segs := strings.SplitN(s.table, ".", 2)
-		if len(segs) == 2 {
-			s.sb.WriteString(segs[0])
-			s.sb.WriteByte('`')
-			s.sb.WriteByte('.')
-			s.sb.WriteByte('`')
-			s.sb.WriteString(segs[1])
-		} else {
-			s.sb.WriteString(s.table)
-		}
+	s.buildTableName()
+
+	if err = s.buildWhere(); err != nil {
+		return nil, err
 	}
-	s.sb.WriteByte('`')
 
-	if len(s.where) > 0 {
-		s.sb.WriteString(" WHERE ")
-		pred := s.where[0]
-		for i := 1; i < len(s.where); i++ {
-			pred = pred.And(s.where[i])
-		}
-		err := s.buildExpression(pred)
-		if err != nil {
-			return nil, err
-		}
+	if err = s.buildGroupBy(); err != nil {
+		return nil, err
 	}
 
 	s.sb.WriteByte(';')
@@ -246,5 +237,56 @@ func (s *Selector[T]) buildAggregate(c Aggregate) error {
 
 	s.buildAs(c.alias)
 
+	return nil
+}
+
+func (s *Selector[T]) buildTableName() {
+	s.sb.WriteByte('`')
+	if s.table == "" {
+		s.sb.WriteString(s.model.TableName)
+	} else {
+		// 处理 db.table_name 的情况
+		segs := strings.SplitN(s.table, ".", 2)
+		if len(segs) == 2 {
+			s.sb.WriteString(segs[0])
+			s.sb.WriteByte('`')
+			s.sb.WriteByte('.')
+			s.sb.WriteByte('`')
+			s.sb.WriteString(segs[1])
+		} else {
+			s.sb.WriteString(s.table)
+		}
+	}
+	s.sb.WriteByte('`')
+}
+
+func (s *Selector[T]) buildWhere() error {
+	if len(s.where) > 0 {
+		s.sb.WriteString(" WHERE ")
+		pred := s.where[0]
+		for i := 1; i < len(s.where); i++ {
+			pred = pred.And(s.where[i])
+		}
+		err := s.buildExpression(pred)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Selector[T]) buildGroupBy() error {
+	if len(s.groupBy) > 0 {
+		s.sb.WriteString(" GROUP BY ")
+		for i, c := range s.groupBy {
+			if i > 0 {
+				s.sb.WriteByte(',')
+			}
+
+			if err := s.buildColumn(c.name, ""); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
