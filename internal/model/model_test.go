@@ -12,15 +12,15 @@ func Test_parseModel(t *testing.T) {
 		name    string
 		input   any
 		opts    []Opt
-		want    *model
+		want    *Model
 		wantErr error
 	}{
 		{
 			name:  "ptr",
 			input: &go_orm.TestModel{},
-			want: &model{
-				tableName: "test_model",
-				fieldMap: map[string]*field{
+			want: &Model{
+				TableName: "test_model",
+				FieldMap: map[string]*Field{
 					"Id":        {ColName: "id"},
 					"FirstName": {ColName: "first_name"},
 					"Age":       {ColName: "age"},
@@ -32,9 +32,9 @@ func Test_parseModel(t *testing.T) {
 		{
 			name:  "struct",
 			input: go_orm.TestModel{},
-			want: &model{
-				tableName: "test_model",
-				fieldMap: map[string]*field{
+			want: &Model{
+				TableName: "test_model",
+				FieldMap: map[string]*Field{
 					"Id":        {ColName: "id"},
 					"FirstName": {ColName: "first_name"},
 					"Age":       {ColName: "age"},
@@ -57,9 +57,9 @@ func Test_parseModel(t *testing.T) {
 				}
 				return &ColumnTag{}
 			}(),
-			want: &model{
-				tableName: "column_tag",
-				fieldMap: map[string]*field{
+			want: &Model{
+				TableName: "column_tag",
+				FieldMap: map[string]*Field{
 					"ID": {
 						ColName: "ids",
 					},
@@ -70,9 +70,9 @@ func Test_parseModel(t *testing.T) {
 			name:  "with table name ",
 			input: go_orm.TestModel{},
 			opts:  []Opt{WithTableName("a"), WithColumnName("Id", "uid")},
-			want: &model{
-				tableName: "a",
-				fieldMap: map[string]*field{
+			want: &Model{
+				TableName: "a",
+				FieldMap: map[string]*Field{
 					"Id":        {ColName: "uid"},
 					"FirstName": {ColName: "first_name"},
 					"Age":       {ColName: "age"},
@@ -82,8 +82,8 @@ func Test_parseModel(t *testing.T) {
 		},
 	}
 
-	r := &go_orm.registry{
-		models: map[reflect.Type]*model{},
+	r := &Registrys{
+		Models: map[reflect.Type]*Model{},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

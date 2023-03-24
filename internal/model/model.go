@@ -6,11 +6,11 @@ type Opt func(m *Model)
 
 type Model struct {
 	TableName string
-	FieldMap  map[string]*field
-	Columns   []*field
+	FieldMap  map[string]*Field
+	Columns   []*Field
 
 	// 列名-字段名
-	ColumnMap map[string]*field
+	ColumnMap map[string]*Field
 }
 
 func WithTableName(name string) Opt {
@@ -25,13 +25,13 @@ func WithColumnName(field string, colName string) Opt {
 	}
 }
 
-func WithColumn(field string, col *field) Opt {
+func WithColumn(field string, col *Field) Opt {
 	return func(m *Model) {
 		m.FieldMap[field] = col
 	}
 }
 
-type field struct {
+type Field struct {
 	// 字段名
 	GoName string
 

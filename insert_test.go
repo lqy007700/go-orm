@@ -24,7 +24,7 @@ func TestInserter_Build(t *testing.T) {
 				LastName:  &sql.NullString{Valid: true, String: "quan"},
 			}),
 			want: &Query{
-				SQL:  "INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`) VALUES(?,?,?,?);",
+				SQL:  "INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`)VALUES(?,?,?,?);",
 				Args: []any{int64(12), "liu", int8(28), &sql.NullString{Valid: true, String: "quan"}},
 			},
 			wantErr: nil,
@@ -43,9 +43,28 @@ func TestInserter_Build(t *testing.T) {
 				LastName:  &sql.NullString{Valid: true, String: "liang"},
 			}),
 			want: &Query{
-				SQL: "INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`) VALUES(?,?,?,?),(?,?,?,?);",
+				SQL: "INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`)VALUES(?,?,?,?),(?,?,?,?);",
 				Args: []any{int64(12), "liu", int8(28), &sql.NullString{Valid: true, String: "quan"},
 					int64(1), "wang", int8(30), &sql.NullString{Valid: true, String: "liang"}},
+			},
+			wantErr: nil,
+		},
+		{
+			name: "指定列",
+			i: NewInserter[TestModel](memoryDB()).Columns("FirstName", "Age").Values(&TestModel{
+				Id:        12,
+				FirstName: "liu",
+				Age:       28,
+				LastName:  &sql.NullString{Valid: true, String: "quan"},
+			}, &TestModel{
+				Id:        1,
+				FirstName: "wang",
+				Age:       30,
+				LastName:  &sql.NullString{Valid: true, String: "liang"},
+			}),
+			want: &Query{
+				SQL:  "INSERT INTO `test_model`(`first_name`,`age`)VALUES(?,?),(?,?);",
+				Args: []any{"liu", int8(28), "wang", int8(30)},
 			},
 			wantErr: nil,
 		},
