@@ -13,6 +13,8 @@ type Inserter[T any] struct {
 	db   *DB
 	vals []*T
 	cols []string
+
+	onDuplicate *OnDuplicateKey
 }
 
 func NewInserter[T any](db *DB) *Inserter[T] {
@@ -86,10 +88,52 @@ func (i *Inserter[T]) Build() (*Query, error) {
 			args = append(args, of.FieldByIndex(c.Index).Interface())
 		}
 	}
+	i.sb.WriteString(")")
 
-	i.sb.WriteString(");")
+	// 构造 onDuplicate
+	if i.onDuplicate != nil {
+		i.sb.WriteString(" ON DUPLICATE KEY UPDATE ")
+		for _, assign := range i.onDuplicate.assigns {
+			switch a := assign.(type) {
+			case Assignment:
+				i.sb.WriteByte('`')
+				fd, ok := m.FieldMap[a.column]
+				if !ok {
+					return nil, err2.NewErrUnknownColumn(a.column)
+				}
+				i.sb.WriteString(fd.ColName)
+				i.sb.WriteByte('`')
+				i.sb.WriteString("=?")
+				args = append(args, a.val)
+			}
+		}
+	}
+
+	i.sb.WriteString(";")
+
 	return &Query{
 		SQL:  i.sb.String(),
 		Args: args,
 	}, nil
+}
+
+func (i *Inserter[T]) OnDuplicateKey() *OnDuplicateKeyBuilder[T] {
+	return &OnDuplicateKeyBuilder[T]{
+		i: i,
+	}
+}
+
+type OnDuplicateKeyBuilder[T any] struct {
+	i *Inserter[T]
+}
+
+func (o *OnDuplicateKeyBuilder[T]) update(assign ...Assignable) *Inserter[T] {
+	o.i.onDuplicate = &OnDuplicateKey{
+		assigns: assign,
+	}
+	return o.i
+}
+
+type OnDuplicateKey struct {
+	assigns []Assignable
 }

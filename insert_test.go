@@ -68,6 +68,21 @@ func TestInserter_Build(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "upsert",
+			i: NewInserter[TestModel](memoryDB()).Values(&TestModel{
+				Id:        12,
+				FirstName: "liu",
+				Age:       28,
+				LastName:  &sql.NullString{Valid: true, String: "quan"},
+			}).OnDuplicateKey().update(Assign("Age", 19)),
+			want: &Query{
+				SQL: "INSERT INTO `test_model`(`id`,`first_name`,`age`,`last_name`)VALUES(?,?,?,?)" +
+					" ON DUPLICATE KEY UPDATE `age`=?;",
+				Args: []any{int64(12), "liu", int8(28), &sql.NullString{Valid: true, String: "quan"}, 19},
+			},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
