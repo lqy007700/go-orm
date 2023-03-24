@@ -9,6 +9,7 @@ import (
 )
 
 type Selector[T any] struct {
+	builder
 	sb      strings.Builder
 	Args    []any
 	table   string

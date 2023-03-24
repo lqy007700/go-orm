@@ -17,3 +17,8 @@ func Assign(col string, val any) Assignment {
 		val:    val,
 	}
 }
+
+type CC struct {
+	column string
+	val    any
+}

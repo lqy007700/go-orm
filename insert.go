@@ -5,11 +5,10 @@ import (
 	err2 "go-orm/internal/err"
 	"go-orm/internal/model"
 	"reflect"
-	"strings"
 )
 
 type Inserter[T any] struct {
-	sb   strings.Builder
+	builder
 	db   *DB
 	vals []*T
 	cols []string
@@ -19,6 +18,9 @@ type Inserter[T any] struct {
 
 func NewInserter[T any](db *DB) *Inserter[T] {
 	return &Inserter[T]{
+		builder: builder{
+			dialect: db.dialect,
+		},
 		db: db,
 	}
 }
@@ -44,15 +46,13 @@ func (i *Inserter[T]) Build() (*Query, error) {
 	if err != nil {
 		return nil, err
 	}
-	i.sb.WriteByte('`')
-	i.sb.WriteString(m.TableName)
-	i.sb.WriteByte('`')
+	i.m = m
+	i.builder.quote(m.TableName)
 	i.sb.WriteByte('(')
 
 	fields := m.Columns
 	if len(i.cols) != 0 {
 		fields = make([]*model.Field, 0, len(i.cols))
-
 		for _, col := range i.cols {
 			fd, ok := m.FieldMap[col]
 			if !ok {
@@ -67,13 +67,11 @@ func (i *Inserter[T]) Build() (*Query, error) {
 			i.sb.WriteByte(',')
 		}
 
-		i.sb.WriteByte('`')
-		i.sb.WriteString(field.ColName)
-		i.sb.WriteByte('`')
+		i.builder.quote(field.ColName)
 	}
 
 	i.sb.WriteString(")VALUES(")
-	args := make([]any, 0, len(i.vals)*len(m.Columns))
+	i.args = make([]any, 0, len(i.vals)*len(m.Columns))
 	for i3, val := range i.vals {
 		of := reflect.ValueOf(val).Elem()
 		if i3 > 0 {
@@ -85,27 +83,16 @@ func (i *Inserter[T]) Build() (*Query, error) {
 				i.sb.WriteByte(',')
 			}
 			i.sb.WriteByte('?')
-			args = append(args, of.FieldByIndex(c.Index).Interface())
+			i.args = append(i.args, of.FieldByIndex(c.Index).Interface())
 		}
 	}
 	i.sb.WriteString(")")
 
 	// 构造 onDuplicate
 	if i.onDuplicate != nil {
-		i.sb.WriteString(" ON DUPLICATE KEY UPDATE ")
-		for _, assign := range i.onDuplicate.assigns {
-			switch a := assign.(type) {
-			case Assignment:
-				i.sb.WriteByte('`')
-				fd, ok := m.FieldMap[a.column]
-				if !ok {
-					return nil, err2.NewErrUnknownColumn(a.column)
-				}
-				i.sb.WriteString(fd.ColName)
-				i.sb.WriteByte('`')
-				i.sb.WriteString("=?")
-				args = append(args, a.val)
-			}
+		err = i.dialect.buildDuplicateKey(&i.builder, i.onDuplicate)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -113,7 +100,7 @@ func (i *Inserter[T]) Build() (*Query, error) {
 
 	return &Query{
 		SQL:  i.sb.String(),
-		Args: args,
+		Args: i.args,
 	}, nil
 }
 
