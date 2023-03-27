@@ -12,7 +12,7 @@ type QueryI[T any] interface {
 }
 
 type Executor[T any] interface {
-	Exec(ctx context.Context) (sql.Result, error)
+	Exec(ctx context.Context) sql.Result
 }
 
 type QueryBuilder interface {

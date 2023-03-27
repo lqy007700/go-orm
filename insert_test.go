@@ -1,7 +1,9 @@
 package go_orm
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -93,4 +95,15 @@ func TestInserter_Build(t *testing.T) {
 			assert.Equalf(t, tt.want, got, "Build()")
 		})
 	}
+}
+
+func TestInserter_Exec(t *testing.T) {
+	i := Inserter[TestModel]{}
+
+	exec := i.Exec(context.Background())
+	id, err := exec.LastInsertId()
+	if err != nil {
+		return
+	}
+	fmt.Println(id)
 }

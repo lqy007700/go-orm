@@ -5,18 +5,33 @@ import (
 	err2 "go-orm/internal/err"
 	go_orm "go-orm/internal/model"
 	"reflect"
+	"unsafe"
 )
 
 type ReflectValue struct {
 	t     any
 	model *go_orm.Model
+	addr  unsafe.Pointer
 }
 
 func NewReflectValue(t any, model *go_orm.Model) Value {
+	addr := unsafe.Pointer(reflect.ValueOf(t).Pointer())
 	return &ReflectValue{
 		t:     t,
 		model: model,
+		addr:  addr,
 	}
+}
+
+func (r *ReflectValue) Field(name string) (any, error) {
+	fdMeta, ok := r.model.FieldMap[name]
+	if !ok {
+		return 0, err2.NewErrUnknownColumn(name)
+	}
+
+	ptr := unsafe.Pointer(uintptr(r.addr) + fdMeta.Offset)
+	at := reflect.NewAt(fdMeta.Typ, ptr)
+	return at, nil
 }
 
 func (r *ReflectValue) SetColumns(rows *sql.Rows) error {

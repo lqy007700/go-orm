@@ -1,6 +1,8 @@
 package go_orm
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	err2 "go-orm/internal/err"
 	"go-orm/internal/model"
@@ -14,6 +16,20 @@ type Inserter[T any] struct {
 	cols []string
 
 	onDuplicate *OnDuplicateKey
+}
+
+func (i *Inserter[T]) Exec(ctx context.Context) sql.Result {
+	build, err := i.Build()
+	if err != nil {
+		return Result{
+			err: err,
+		}
+	}
+	exec, err := i.db.db.Exec(build.SQL, build.Args...)
+	return Result{
+		res: exec,
+		err: err,
+	}
 }
 
 func NewInserter[T any](db *DB) *Inserter[T] {

@@ -8,6 +8,8 @@ import (
 // Value reflect 和 unsafe 的抽象
 type Value interface {
 	SetColumns(row *sql.Rows) error
+
+	Field(name string) (any, error)
 }
 
 type Creator func(t any, model *model.Model) Value
