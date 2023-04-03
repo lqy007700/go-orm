@@ -15,12 +15,13 @@ type UnsafeValue struct {
 }
 
 func NewUnsafeValue(t any, model *model.Model) Value {
-	addr := unsafe.Pointer(reflect.ValueOf(t).Pointer())
-	return &UnsafeValue{
-		t:     t,
-		model: model,
-		addr:  addr,
-	}
+	//addr := unsafe.Pointer(reflect.ValueOf(t).Pointer())
+	return nil
+	//return &UnsafeValue{
+	//	t:     t,
+	//	model: model,
+	//	addr:  addr,
+	//}
 }
 
 func (u *UnsafeValue) SetColumns(rows *sql.Rows) error {

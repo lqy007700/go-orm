@@ -22,16 +22,19 @@ type Selector[T any] struct {
 	offset  int32
 
 	model *model2.Model
-	db    *DB
+	//db    *DB
+	sess Session
+	core
 }
 
 type Selectable interface {
 	selectable()
 }
 
-func NewSelector[T any](db *DB) *Selector[T] {
+func NewSelector[T any](sess Session) *Selector[T] {
 	return &Selector[T]{
-		db: db,
+		sess: sess,
+		core: sess.getCore(),
 	}
 }
 
@@ -80,7 +83,7 @@ func (s *Selector[T]) Build() (*Query, error) {
 		t   = new(T)
 		err error
 	)
-	s.model, err = s.db.r.Get(t)
+	s.model, err = s.r.Get(t)
 	if err != nil {
 		return nil, err
 	}
@@ -180,32 +183,51 @@ func (s *Selector[T]) buildExpression(expression Expression) error {
 }
 
 func (s *Selector[T]) Get(ctx context.Context) (*T, error) {
-	build, err := s.Build()
-	if err != nil {
-		return nil, err
+	var root Handler = func(ctx context.Context, qc *QueryContext) *QueryResult {
+		build, err := qc.Builder.Build()
+		if err != nil {
+			return &QueryResult{
+				Err: err,
+			}
+		}
+
+		rows, err := s.sess.queryContext(ctx, build.SQL, s.Args...)
+		if err != nil {
+			return &QueryResult{
+				Err: err,
+			}
+		}
+		t := new(T)
+
+		val := s.valCreator(t, s.model)
+		return &QueryResult{
+			Result: t,
+			Err:    val.SetColumns(rows),
+		}
 	}
 
-	rows, err := s.db.db.QueryContext(ctx, build.SQL, s.Args...)
-	if err != nil {
-		return nil, err
+	for i := len(s.ms) - 1; i >= 0; i-- {
+		root = s.ms[i](root)
 	}
-	t := new(T)
 
-	val := s.db.valCreator(t, s.model)
-	return t, val.SetColumns(rows)
+	res := root(ctx, &QueryContext{
+		Type:    "SELECT",
+		Builder: s,
+	})
+
+	if res.Err != nil {
+		return nil, res.Err
+	}
+
+	t, ok := res.Result.(*T)
+	if !ok {
+		return nil, errors.New("类型错误")
+	}
+
+	return t, nil
 }
 
 func (s *Selector[T]) GetMulti(ctx context.Context) ([]*T, error) {
-	//var db *sql.DB
-	//build, err := s.Build()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//queryContext, err := db.QueryContext(ctx, build.SQL, build.args)
-	//if err != nil {
-	//	return nil, err
-	//}
 	return nil, nil
 }
 

@@ -11,7 +11,8 @@ import (
 
 type Inserter[T any] struct {
 	builder
-	db   *DB
+	core
+	sess Session
 	vals []*T
 	cols []string
 
@@ -25,19 +26,21 @@ func (i *Inserter[T]) Exec(ctx context.Context) sql.Result {
 			err: err,
 		}
 	}
-	exec, err := i.db.db.Exec(build.SQL, build.Args...)
+	exec, err := i.sess.exec(build.SQL, build.Args...)
 	return Result{
 		res: exec,
 		err: err,
 	}
 }
 
-func NewInserter[T any](db *DB) *Inserter[T] {
+func NewInserter[T any](sess Session) *Inserter[T] {
+	c := sess.getCore()
 	return &Inserter[T]{
 		builder: builder{
-			dialect: db.dialect,
+			dialect: c.dialect,
 		},
-		db: db,
+		core: c,
+		sess: sess,
 	}
 }
 
@@ -58,7 +61,7 @@ func (i *Inserter[T]) Build() (*Query, error) {
 
 	i.sb.WriteString("INSERT INTO ")
 
-	m, err := i.db.r.Get(i.vals[0])
+	m, err := i.r.Get(i.vals[0])
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +109,7 @@ func (i *Inserter[T]) Build() (*Query, error) {
 
 	// 构造 onDuplicate
 	if i.onDuplicate != nil {
-		err = i.dialect.buildDuplicateKey(&i.builder, i.onDuplicate)
+		err = i.core.dialect.buildDuplicateKey(&i.builder, i.onDuplicate)
 		if err != nil {
 			return nil, err
 		}
